@@ -10,7 +10,7 @@
 #include <inttypes.h>
 #include <vector>
 #include "leveldb/db.h"
-
+#include <iostream>
 // #define ANALYSIS_DB "./db/"
 #define FP_SIZE 6
 #define K_MINHASH 1
@@ -44,7 +44,7 @@ void init_segment(const char *rel)
       options.create_if_missing = true;
       leveldb::Status status = leveldb::DB::Open(options, rel, &segmentDb);
       assert(status.ok());
-        assert(relate != NULL);
+        assert(segmentDb != NULL);
 }
 void init_slice(const char *rel)
 {
@@ -52,7 +52,7 @@ void init_slice(const char *rel)
       options.create_if_missing = true;
       leveldb::Status status = leveldb::DB::Open(options, rel, &sliceDb);
       assert(status.ok());
-        assert(relate != NULL);
+        assert(sliceDb != NULL);
 }
 uint64_t sq_size = 0;
 
@@ -60,7 +60,6 @@ void process_seg()
 {
 	char ft[FP_SIZE*2];
 	unsigned char md5full[16];
-	char ret[FP_SIZE];
 
 	int k = rand()%K_MINHASH;
 	for (int i = 0; i < k; i++)
@@ -93,21 +92,21 @@ void process_seg()
     //--------------Write segment db-----------------
     leveldb::Status cst;
     MD5((unsigned char *)segmentValue.c_str(), segmentValue.length(), md5full);
-    leveldb::Slice segkey(md5full, FP_SIZE);
+    leveldb::Slice segkey((char *)md5full, FP_SIZE);
     leveldb::Slice segvalue(segmentValue);
     cst = segmentDb->Put(leveldb::WriteOptions(), segkey, segvalue);
     if(!cst.ok())cout<<"IO_er\n";
     //--------------slicing-------------------------
-    string liy(md5full, FP_SIZE);
+    string liy((char *)md5full, FP_SIZE);
     leveldb::Slice sliceKey(core.key, FP_SIZE);
     string sliceValue = "";
     cst = sliceDb->Get(leveldb::ReadOptions(), sliceKey, &sliceValue);
     if(cst.ok()){
         sliceValue += liy;
+	cst = sliceDb->Delete(leveldb::WriteOptions(), sliceKey);
     }else{
         sliceValue = liy;
     }
-    cst = sliceDb->Delete(leveldb::WriteOptions(), sliceKey);
     cst = sliceDb->Put(leveldb::WriteOptions(), sliceKey, sliceValue);
     if(!cst.ok())cout<<"IO_er\n";
 }
@@ -171,14 +170,13 @@ int main (int argc, char *argv[])
 {
 	srand((unsigned)time(NULL));
 	assert(argc >= 2);
-	// argv[1] points to hash file; argv[2] points to analysis db  
+	// argv[1] points to hash file; argv[2] points to segment db; argv[3] points to slice db;  
 
 	FILE *fp = NULL;
 	fp = fopen(argv[1], "r");
 	assert(fp != NULL);
-    //init_relate("./ground-truth/");
-    init_segment(argv[2]);
-    init_slice(argv[3]);
+    	init_segment(argv[2]);
+    	init_slice(argv[3]);
 	read_hashes(fp);
 	process_seg();
 	fclose(fp);
