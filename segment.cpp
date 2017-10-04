@@ -137,7 +137,7 @@ void read_hashes(FILE *fp)
 		uint64_t size = atoi((const char*)item);
 
 
-		if (sq_size + size > SEG_MAX || (sq_size >= SEG_MIN && (hash[5] << 2) >> 2 == 0x3f))
+		if (sq_size + size > SEG_MAX /*|| (sq_size >= SEG_MIN && (hash[5] << 2) >> 2 == 0x3f)*/)
 		{
 			process_seg();
 			while(!pq.empty()) pq.pop();
